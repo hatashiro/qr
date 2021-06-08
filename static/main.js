@@ -4,20 +4,41 @@ const $video = document.createElement('video');
 
 const canvasContext = $canvas.getContext("2d");
 
-const jsQROptions = {inversionAttempts: "dontInvert"};
+const mediaConstraint = {
+  audio: false,
+  video: {
+    facingMode: 'environment',
+  },
+};
 
-async function main() {
-  const mediaConstraint = {
-    audio: false,
-    video: {
-      facingMode: 'environment',
-    },
-  };
-  const stream = await navigator.mediaDevices.getUserMedia(mediaConstraint);
+const qrOptions = {inversionAttempts: "dontInvert"};
+
+let stream;
+async function startRecording() {
+  if (stream) stopRecording();
+  stream = await navigator.mediaDevices.getUserMedia(mediaConstraint);
 
   $video.srcObject = stream;
   $video.setAttribute("playsinline", true);
   $video.play();
+}
+
+function stopRecording() {
+  if (!stream) return;
+  stream.getTracks().forEach(track => track.stop());
+  stream = null;
+}
+
+async function main() {
+  await startRecording();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  });
 
   animationLoop(() => {
     const width = $video.videoWidth;
@@ -31,7 +52,7 @@ async function main() {
 
     const image = canvasContext.getImageData(0, 0, width, height);
 
-    const code = jsQR(image.data, image.width, image.height, jsQROptions);
+    const code = jsQR(image.data, image.width, image.height, qrOptions);
     if (code) handleCode(code);
   });
 }
